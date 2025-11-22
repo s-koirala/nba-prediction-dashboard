@@ -1,0 +1,33 @@
+{
+  "optimal_strategy": {
+    "high_confidence_pct": 0.0,
+    "medium_confidence_pct": 0.0,
+    "low_confidence_pct": 0.085
+  },
+  "in_sample_performance": {
+    "dataset": "2024-25 season",
+    "num_games": 1225,
+    "roi": 46.853146853147045,
+    "win_rate": 0.6595918367346939,
+    "total_profit": 108722.72727272773
+  },
+  "out_of_sample_performance": {
+    "dataset": "2025-26 season",
+    "num_games": 231,
+    "roi": 35.22727272727271,
+    "win_rate": 0.6536796536796536,
+    "total_profit": 14372.727272727268
+  },
+  "degradation": {
+    "roi_change": -11.625874125874333,
+    "win_rate_change": -0.005912183055040265
+  },
+  "baseline_comparison": {
+    "baseline_test_roi": 24.7933884297521,
+    "optimized_test_roi": 35.22727272727271,
+    "improvement": 10.433884297520613
+  },
+  "validation_method": "walk_forward",
+  "training_period": "2024-25",
+  "test_period": "2025-26"
+}

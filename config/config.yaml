@@ -1,0 +1,64 @@
+# NBA Prediction Model Configuration
+# Primary Target: Point Spread Predictions (Margin of Victory)
+
+# Data Collection Settings
+data:
+  start_season: "2015-16"
+  end_season: "2024-25"
+  training_cutoff: "2023-24"
+  validation_season: "2024-25"
+
+# Prediction Targets (in priority order)
+targets:
+  primary: "point_spread"  # Margin of victory prediction
+  secondary: ["win_loss", "total_points"]
+  spread_threshold: 52.4  # Win % needed for profitability (-110 juice)
+
+# Feature Engineering
+features:
+  rolling_windows: [5, 10, 20]
+  elo_k_factor: 20
+  home_advantage: 100
+
+# Model Parameters
+models:
+  elo:
+    initial_rating: 1500
+    k_factor: 20
+    home_advantage: 100
+    mov_multiplier: true
+
+  neural_network:
+    hidden_layers: [128, 64, 32]
+    activation: "relu"
+    dropout_rate: 0.3
+    learning_rate: 0.001
+    batch_size: 32
+    epochs: 100
+    early_stopping_patience: 15
+
+  xgboost:
+    max_depth: 6
+    learning_rate: 0.1
+    n_estimators: 200
+    subsample: 0.8
+    colsample_bytree: 0.8
+
+  ensemble:
+    method: "stacking"  # or "weighted_average"
+    elo_weight: 0.25
+    nn_weight: 0.35
+    xgb_weight: 0.40
+
+# Paths
+paths:
+  raw_data: "data/raw"
+  processed_data: "data/processed"
+  features: "data/features"
+  models: "models"
+  results: "results"
+
+# Evaluation
+evaluation:
+  metrics: ["accuracy", "precision", "recall", "f1", "roc_auc"]
+  cross_validation_folds: 5

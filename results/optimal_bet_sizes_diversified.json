@@ -1,0 +1,56 @@
+{
+  "diversified_strategy": {
+    "high_confidence_pct": 0.14,
+    "medium_confidence_pct": 0.01,
+    "low_confidence_pct": 0.14
+  },
+  "in_sample_performance": {
+    "dataset": "2024-25 season",
+    "num_games": 1412,
+    "roi": 39.430292178725175,
+    "win_rate": 0.6515580736543909,
+    "total_profit": 220218.1818181801,
+    "num_bets": 1412
+  },
+  "out_of_sample_performance": {
+    "dataset": "2025-26 season",
+    "num_games": 231,
+    "roi": 32.36860795454547,
+    "win_rate": 0.6536796536796536,
+    "total_profit": 33145.45454545456,
+    "num_bets": 231,
+    "by_confidence": {
+      "HIGH": {
+        "bets": 13,
+        "wins": 9,
+        "profit": 5854.545454545456,
+        "wagered": 18200.000000000004
+      },
+      "MEDIUM": {
+        "bets": 170,
+        "wins": 108,
+        "profit": 3618.181818181823,
+        "wagered": 17000.0
+      },
+      "LOW": {
+        "bets": 48,
+        "wins": 34,
+        "profit": 23672.727272727265,
+        "wagered": 67200.00000000001
+      }
+    }
+  },
+  "degradation": {
+    "roi_change": -7.061684224179707,
+    "win_rate_change": 0.002121580025262748
+  },
+  "comparison_to_concentrated": {
+    "concentrated_roi": 35.22727272727271,
+    "diversified_roi": 32.36860795454547,
+    "roi_difference": -2.858664772727245,
+    "concentrated_profit": 14372.727272727268,
+    "diversified_profit": 33145.45454545456,
+    "profit_difference": 18772.72727272729
+  },
+  "validation_method": "walk_forward_diversified"
+}
