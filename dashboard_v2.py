@@ -33,9 +33,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS with mobile optimization
 st.markdown("""
 <style>
+    /* Desktop styles */
     .main-header {
         font-size: 3rem;
         font-weight: bold;
@@ -66,6 +67,63 @@ st.markdown("""
     .low-confidence {
         background-color: #f8d7da;
         border-left: 4px solid #dc3545;
+    }
+
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 1.8rem !important;
+            margin-bottom: 1rem !important;
+        }
+
+        /* Make metrics stack vertically on mobile */
+        [data-testid="stHorizontalBlock"] > div {
+            width: 100% !important;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Reduce padding on mobile */
+        .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        /* Make tables scrollable */
+        .dataframe {
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
+
+        /* Smaller font for mobile */
+        body, p, div {
+            font-size: 0.9rem;
+        }
+
+        /* Reduce chart heights on mobile */
+        .js-plotly-plot {
+            max-height: 300px !important;
+        }
+
+        /* Hide sidebar by default on mobile */
+        [data-testid="stSidebar"] {
+            display: none;
+        }
+
+        /* Optimize metric cards for mobile */
+        [data-testid="stMetricValue"] {
+            font-size: 1.2rem !important;
+        }
+
+        [data-testid="stMetricLabel"] {
+            font-size: 0.8rem !important;
+        }
+    }
+
+    /* Tablet optimizations */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .main-header {
+            font-size: 2.2rem !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
