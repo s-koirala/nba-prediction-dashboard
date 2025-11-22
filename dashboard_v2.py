@@ -30,7 +30,7 @@ st.set_page_config(
     page_title="NBA Prediction Dashboard",
     page_icon="🏀",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto"  # Collapsed on mobile, expanded on desktop
 )
 
 # Custom CSS with mobile optimization
@@ -104,9 +104,10 @@ st.markdown("""
             max-height: 300px !important;
         }
 
-        /* Hide sidebar by default on mobile */
-        [data-testid="stSidebar"] {
-            display: none;
+        /* Optimize sidebar for mobile (collapsible, not hidden) */
+        [data-testid="stSidebar"][aria-expanded="true"] {
+            width: 85% !important;
+            max-width: 320px !important;
         }
 
         /* Optimize metric cards for mobile */
