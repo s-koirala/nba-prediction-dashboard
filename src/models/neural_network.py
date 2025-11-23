@@ -184,11 +184,17 @@ class NBANeuralNetwork:
 
     def load_model(self, model_dir='models/neural_network'):
         """Load trained model"""
-        if self.use_keras:
-            self.model = keras.models.load_model(os.path.join(model_dir, 'nn_model.keras'))
-        else:
-            with open(os.path.join(model_dir, 'nn_model.pkl'), 'rb') as f:
+        # Check which model file exists and load accordingly
+        keras_path = os.path.join(model_dir, 'nn_model.keras')
+        pkl_path = os.path.join(model_dir, 'nn_model.pkl')
+
+        if os.path.exists(keras_path) and self.use_keras:
+            self.model = keras.models.load_model(keras_path)
+        elif os.path.exists(pkl_path):
+            with open(pkl_path, 'rb') as f:
                 self.model = pickle.load(f)
+        else:
+            raise FileNotFoundError(f"No model file found in {model_dir}. Looking for nn_model.keras or nn_model.pkl")
 
         # Load scaler
         with open(os.path.join(model_dir, 'scaler.pkl'), 'rb') as f:
