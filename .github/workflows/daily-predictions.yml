@@ -32,6 +32,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Archive yesterday's predictions before generating new ones
+        run: |
+          python archive_predictions.py
+        continue-on-error: true  # OK if no file exists
+
       - name: Generate tonight's predictions
         run: |
           python predict_tonight.py
@@ -42,15 +47,12 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          if [ -f "results/tonights_predictions.csv" ]; then
-            git add results/tonights_predictions.csv
+          # Add both tonight's predictions and archive
+          git add results/tonights_predictions.csv results/prediction_archive/ 2>/dev/null || true
 
-            if git diff --staged --quiet; then
-              echo "No changes to commit"
-            else
-              git commit -m "🤖 Auto-update: Daily NBA predictions for $(date +%Y-%m-%d)"
-              git push
-            fi
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
           else
-            echo "No predictions file generated (likely no games today)"
+            git commit -m "🤖 Auto-update: Daily NBA predictions for $(date +%Y-%m-%d)"
+            git push
           fi

@@ -32,9 +32,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Update 2025-26 season performance
+      - name: Append new completed games (incremental only)
         run: |
-          python test_2025_26_season.py
+          python append_new_predictions.py
         continue-on-error: false
 
       - name: Commit and push if changes
