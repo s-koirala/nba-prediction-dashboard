@@ -546,17 +546,44 @@ with st.sidebar:
 if page == "📊 Tonight's Games":
     st.markdown("<h1 class='main-header'>🏀 Tonight's NBA Predictions</h1>", unsafe_allow_html=True)
 
+    # Check if predictions need auto-refresh
+    import os
+    predictions_stale = False
+    auto_refresh_attempted = False
+
+    if os.path.exists('results/tonights_predictions.csv'):
+        modified_time = datetime.fromtimestamp(os.path.getmtime('results/tonights_predictions.csv'))
+        modified_date = modified_time.date()
+        today_date = datetime.now().date()
+
+        # Auto-refresh if predictions are from a different day
+        if modified_date < today_date and 'auto_refreshed' not in st.session_state:
+            st.session_state.auto_refreshed = True
+            with st.spinner("🔄 Auto-refreshing predictions for today..."):
+                new_predictions, message = generate_fresh_predictions()
+                if new_predictions is not None:
+                    st.success(message)
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    predictions_stale = True
+                    auto_refresh_attempted = True
+
     # Add refresh controls
     col_info, col_refresh = st.columns([3, 1])
 
     with col_info:
-        import os
         if os.path.exists('results/tonights_predictions.csv'):
             modified_time = datetime.fromtimestamp(os.path.getmtime('results/tonights_predictions.csv'))
+            modified_date = modified_time.date()
+            today_date = datetime.now().date()
             time_diff = datetime.now() - modified_time
 
-            if time_diff.days > 0:
-                st.warning(f"⚠️ Predictions are {time_diff.days} day(s) old. Click 'Refresh' to update.")
+            if modified_date < today_date:
+                if auto_refresh_attempted:
+                    st.error(f"❌ Could not fetch today's games. Showing predictions from {modified_date.strftime('%B %d, %Y')}. Click 'Refresh' to try again.")
+                else:
+                    st.warning(f"⚠️ Predictions are from {modified_date.strftime('%B %d, %Y')}. Click 'Refresh' to update.")
             elif time_diff.seconds > 14400:  # 4 hours
                 st.info(f"ℹ️ Predictions last updated {time_diff.seconds // 3600} hours ago.")
             else:
@@ -564,6 +591,7 @@ if page == "📊 Tonight's Games":
 
     with col_refresh:
         if st.button("🔄 Refresh Predictions", type="primary", use_container_width=True):
+            st.session_state.auto_refreshed = False  # Reset auto-refresh flag
             with st.spinner("Fetching today's games and generating predictions..."):
                 new_predictions, message = generate_fresh_predictions()
                 if new_predictions is not None:
