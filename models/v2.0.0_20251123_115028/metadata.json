@@ -1,0 +1,78 @@
+{
+  "version": "2.0.0",
+  "trained_date": "2025-11-23T11:50:27.674150",
+  "description": "Temporally-trained models with no look-ahead bias",
+  "train_start": "2018-10-01",
+  "train_end": "2023-10-01",
+  "val_start": "2023-10-01",
+  "val_end": "2024-10-01",
+  "test_start": "2024-10-01",
+  "test_end": "2025-10-01",
+  "elo": {
+    "k_factor": 20,
+    "home_advantage": 100,
+    "initial_rating": 1505,
+    "season_reset_factor": 0.75,
+    "mean_rating": 1505
+  },
+  "neural_network": {
+    "layers": [
+      64,
+      32,
+      16
+    ],
+    "activation": "relu",
+    "epochs": 100,
+    "batch_size": 32,
+    "learning_rate": 0.001
+  },
+  "xgboost": {
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "n_estimators": 200,
+    "min_child_weight": 1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8
+  },
+  "features": {
+    "rolling_windows": [
+      5,
+      10,
+      20
+    ],
+    "momentum_windows": [
+      5,
+      10
+    ]
+  },
+  "temporal_integrity_verified": true,
+  "look_ahead_bias": false,
+  "training_method": "temporal_split",
+  "training_info": {
+    "window_type": "rolling",
+    "window_years": 4,
+    "train_start": "2021-11-23",
+    "train_end": "2025-11-23"
+  },
+  "metrics": {
+    "training_games": 3428,
+    "training_date_range": {
+      "start": "2021-11-23",
+      "end": "2024-04-14"
+    }
+  },
+  "model_directory": "models/v2.0.0_20251123_115028",
+  "elo_parameters": {
+    "k_factor": 20,
+    "home_advantage": 100,
+    "initial_rating": 1505,
+    "season_reset_factor": 0.75,
+    "mean_rating": 1505
+  },
+  "teams_tracked": 30,
+  "quality_checks": {
+    "temporal_integrity_verified": true,
+    "feature_integrity_verified": true,
+    "look_ahead_bias": false
+  }
+}

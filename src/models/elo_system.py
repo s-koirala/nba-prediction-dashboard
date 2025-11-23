@@ -8,7 +8,8 @@ import numpy as np
 from typing import Dict, Tuple
 
 class NBAEloRatings:
-    def __init__(self, k_factor=20, home_advantage=100, initial_rating=1500):
+    def __init__(self, k_factor=20, home_advantage=100, initial_rating=1505,
+                 season_reset_factor=0.75, mean_rating=1505):
         """
         Initialize Elo rating system
 
@@ -16,10 +17,14 @@ class NBAEloRatings:
         - k_factor: How quickly ratings change (higher = more volatile)
         - home_advantage: Points added to home team's rating
         - initial_rating: Starting Elo rating for new teams
+        - season_reset_factor: Regression factor for season reset (FiveThirtyEight uses 0.75)
+        - mean_rating: Mean rating to regress towards (FiveThirtyEight uses 1505)
         """
         self.k_factor = k_factor
         self.home_advantage = home_advantage
         self.initial_rating = initial_rating
+        self.season_reset_factor = season_reset_factor
+        self.mean_rating = mean_rating
         self.ratings = {}  # Dictionary to store current ratings
 
     def expected_score(self, rating_a, rating_b):
@@ -104,6 +109,36 @@ class NBAEloRatings:
         self.ratings[team_b] = new_rating_b
 
         return new_rating_a, new_rating_b, expected_a
+
+    def margin_of_victory_multiplier_538(self, point_diff, elo_diff):
+        """
+        FiveThirtyEight's exact MOV multiplier formula
+        K_multiplier = (MOV + 3)^0.8 / (7.5 + 0.006 * ED)
+
+        This is the official FiveThirtyEight formula.
+        """
+        mov = abs(point_diff)
+        ed = abs(elo_diff)
+
+        # FiveThirtyEight's formula
+        k_multiplier = ((mov + 3) ** 0.8) / (7.5 + 0.006 * ed)
+
+        return k_multiplier
+
+    def season_reset(self):
+        """
+        Apply season reset - regress ratings toward mean.
+        FiveThirtyEight methodology: new_rating = (0.75 * current) + (0.25 * 1505)
+
+        This should be called at the start of each new season.
+        """
+        for team in self.ratings:
+            current_rating = self.ratings[team]
+            new_rating = (self.season_reset_factor * current_rating) + \
+                        ((1 - self.season_reset_factor) * self.mean_rating)
+            self.ratings[team] = new_rating
+
+        print(f"Season reset applied: {self.season_reset_factor:.0%} retention toward mean of {self.mean_rating}")
 
     def predict_game(self, team_a, team_b, is_home_a=True):
         """
