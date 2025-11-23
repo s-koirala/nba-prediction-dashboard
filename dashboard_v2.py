@@ -147,11 +147,158 @@ def load_models():
 # Load data (cached)
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_predictions():
-    """Load tonight's predictions"""
+    """Load tonight's predictions with freshness check"""
     try:
-        return pd.read_csv('results/tonights_predictions.csv')
+        predictions = pd.read_csv('results/tonights_predictions.csv')
+
+        # Check file modification time to see if predictions are fresh
+        import os
+        file_path = 'results/tonights_predictions.csv'
+        if os.path.exists(file_path):
+            modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+            predictions.attrs['last_updated'] = modified_time
+
+        return predictions
     except:
         return None
+
+def generate_fresh_predictions():
+    """Generate fresh predictions for today's games"""
+    try:
+        from datetime import datetime
+        from nba_api.stats.endpoints import scoreboardv2
+        from nba_api.stats.static import teams
+
+        # Get today's games
+        today = datetime.now()
+        date_str = today.strftime('%Y-%m-%d')
+
+        scoreboard = scoreboardv2.ScoreboardV2(game_date=date_str)
+        games = scoreboard.get_data_frames()[0]
+
+        if len(games) == 0:
+            return None, "No games scheduled for today"
+
+        # Get team names mapping
+        all_teams = teams.get_teams()
+        team_map = {team['id']: team['full_name'] for team in all_teams}
+
+        games['HOME_TEAM_NAME'] = games['HOME_TEAM_ID'].map(team_map)
+        games['VISITOR_TEAM_NAME'] = games['VISITOR_TEAM_ID'].map(team_map)
+
+        # Load historical data for features
+        historical = pd.read_csv('data/raw/games_processed.csv')
+        if 'GAME_DATE_HOME' in historical.columns:
+            historical['GAME_DATE'] = historical['GAME_DATE_HOME']
+
+        # Load latest features
+        elo_df = pd.read_csv('data/features/elo_ratings.csv')
+        elo_df['GAME_DATE'] = pd.to_datetime(elo_df['GAME_DATE'])
+        latest_elo = elo_df.sort_values('GAME_DATE').groupby('HOME_TEAM').last()
+
+        rolling = pd.read_csv('data/features/rolling_stats.csv')
+        rolling['GAME_DATE'] = pd.to_datetime(rolling['GAME_DATE'])
+        latest_rolling = rolling.sort_values('GAME_DATE').groupby('TEAM_NAME').last()
+
+        momentum = pd.read_csv('data/features/momentum.csv')
+        momentum['GAME_DATE'] = pd.to_datetime(momentum['GAME_DATE'])
+        latest_momentum = momentum.sort_values('GAME_DATE').groupby('TEAM').last()
+
+        # Load models
+        nn_model, xgb_model, ensemble = load_models()
+
+        # Generate predictions for each game
+        predictions_list = []
+
+        for idx, game in games.iterrows():
+            home_team = game['HOME_TEAM_NAME']
+            away_team = game['VISITOR_TEAM_NAME']
+
+            try:
+                # Build feature vector (simplified)
+                home_elo = latest_elo.loc[home_team, 'POST_ELO_HOME'] if home_team in latest_elo.index else 1500
+                away_elo = latest_elo.loc[away_team, 'POST_ELO_AWAY'] if away_team in latest_elo.index else 1500
+
+                # Elo prediction
+                elo_pred = (home_elo - away_elo) * 0.05 + 3.0  # Home advantage
+
+                # Get rolling stats if available
+                if home_team in latest_rolling.index and away_team in latest_rolling.index:
+                    home_stats = latest_rolling.loc[home_team]
+                    away_stats = latest_rolling.loc[away_team]
+
+                    # Build feature vector
+                    features = np.array([[
+                        home_elo, away_elo,
+                        home_stats['PTS_ROLL_5'], away_stats['PTS_ROLL_5'],
+                        home_stats['FG_PCT_ROLL_5'], away_stats['FG_PCT_ROLL_5'],
+                        home_stats['FG3_PCT_ROLL_5'], away_stats['FG3_PCT_ROLL_5'],
+                        home_stats['REB_ROLL_5'], away_stats['REB_ROLL_5'],
+                        home_stats['AST_ROLL_5'], away_stats['AST_ROLL_5'],
+                        home_stats['TOV_ROLL_5'], away_stats['TOV_ROLL_5'],
+                        home_stats.get('PTS_ROLL_10', home_stats['PTS_ROLL_5']),
+                        away_stats.get('PTS_ROLL_10', away_stats['PTS_ROLL_5']),
+                        home_stats.get('FG_PCT_ROLL_10', home_stats['FG_PCT_ROLL_5']),
+                        away_stats.get('FG_PCT_ROLL_10', away_stats['FG_PCT_ROLL_5']),
+                        home_stats.get('FG3_PCT_ROLL_10', home_stats['FG3_PCT_ROLL_5']),
+                        away_stats.get('FG3_PCT_ROLL_10', away_stats['FG3_PCT_ROLL_5']),
+                    ]])
+
+                    # Add momentum if available
+                    if home_team in latest_momentum.index and away_team in latest_momentum.index:
+                        home_mom = latest_momentum.loc[home_team]
+                        away_mom = latest_momentum.loc[away_team]
+                        features = np.append(features, [[
+                            home_mom['WIN_PCT_L5'], away_mom['WIN_PCT_L5'],
+                            home_mom['WIN_PCT_L10'], away_mom['WIN_PCT_L10'],
+                            home_mom['STREAK'], away_mom['STREAK'],
+                            0, 0, 0, 0  # Rest days placeholders
+                        ]], axis=1)
+
+                        # Derived features
+                        elo_diff = home_elo - away_elo
+                        pts_diff = home_stats['PTS_ROLL_5'] - away_stats['PTS_ROLL_5']
+                        fg_diff = home_stats['FG_PCT_ROLL_5'] - away_stats['FG_PCT_ROLL_5']
+                        features = np.append(features, [[elo_diff, pts_diff, fg_diff, 0]], axis=1)
+
+                        # Get ML predictions
+                        nn_pred = nn_model.predict(features)[0]
+                        xgb_pred = xgb_model.predict(features)[0]
+                        ensemble_pred = ensemble.predict(np.array([elo_pred]), np.array([nn_pred]), np.array([xgb_pred]))[0]
+                    else:
+                        nn_pred = elo_pred
+                        xgb_pred = elo_pred
+                        ensemble_pred = elo_pred
+                else:
+                    # Fall back to Elo only
+                    nn_pred = elo_pred
+                    xgb_pred = elo_pred
+                    ensemble_pred = elo_pred
+
+                predictions_list.append({
+                    'HOME_TEAM': home_team,
+                    'AWAY_TEAM': away_team,
+                    'GAME_TIME': game.get('GAME_STATUS_TEXT', 'TBD'),
+                    'ELO_PREDICTION': elo_pred,
+                    'NN_PREDICTION': nn_pred,
+                    'XGB_PREDICTION': xgb_pred,
+                    'ENSEMBLE_PREDICTION': ensemble_pred
+                })
+
+            except Exception as e:
+                st.warning(f"Could not generate prediction for {away_team} @ {home_team}: {str(e)}")
+                continue
+
+        if predictions_list:
+            predictions_df = pd.DataFrame(predictions_list)
+            # Save to file
+            predictions_df.to_csv('results/tonights_predictions.csv', index=False)
+            return predictions_df, f"Generated {len(predictions_list)} predictions for today"
+        else:
+            return None, "Could not generate predictions"
+
+    except Exception as e:
+        return None, f"Error generating predictions: {str(e)}"
 
 @st.cache_data(ttl=3600)
 def load_historical_performance():
@@ -398,6 +545,33 @@ with st.sidebar:
 # Main content
 if page == "📊 Tonight's Games":
     st.markdown("<h1 class='main-header'>🏀 Tonight's NBA Predictions</h1>", unsafe_allow_html=True)
+
+    # Add refresh controls
+    col_info, col_refresh = st.columns([3, 1])
+
+    with col_info:
+        import os
+        if os.path.exists('results/tonights_predictions.csv'):
+            modified_time = datetime.fromtimestamp(os.path.getmtime('results/tonights_predictions.csv'))
+            time_diff = datetime.now() - modified_time
+
+            if time_diff.days > 0:
+                st.warning(f"⚠️ Predictions are {time_diff.days} day(s) old. Click 'Refresh' to update.")
+            elif time_diff.seconds > 14400:  # 4 hours
+                st.info(f"ℹ️ Predictions last updated {time_diff.seconds // 3600} hours ago.")
+            else:
+                st.success(f"✅ Predictions updated {time_diff.seconds // 60} minutes ago.")
+
+    with col_refresh:
+        if st.button("🔄 Refresh Predictions", type="primary", use_container_width=True):
+            with st.spinner("Fetching today's games and generating predictions..."):
+                new_predictions, message = generate_fresh_predictions()
+                if new_predictions is not None:
+                    st.success(message)
+                    st.cache_data.clear()  # Clear cache to reload fresh data
+                    st.rerun()
+                else:
+                    st.error(message)
 
     predictions = load_predictions()
 
